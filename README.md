@@ -32,7 +32,8 @@ Some of the rules supported by the makefile:
 | docker-build | build registry operator docker image |
 | docker-push | push registry operator docker image |
 | deploy | deploy operator to cluster |
-| install | create the devfile registry operator CRDs on the cluster |
+| install | create the devfile registry CRDs on the cluster |
+| uninstall | remove the devfile registry operator and CRDs from the cluster |
 | manifests | Generate manifests e.g. CRD, RBAC etc. |
 | generate | Generate the API type definitions. Must be run after modifying the DevfileRegistry type. |
 
@@ -43,8 +44,5 @@ It's possible to run an instance of the operator locally while communicating wit
 
 ```bash
 export NAMESPACE=devfileregistry-operator
-export TOOL=oc # Use 'export TOOL=kubectl' for kubernetes
 make run ENABLE_WEBHOOKS=false
 ```
-
-When running locally, only a single namespace is watched; as a result, all workspaces have to be deployed to `${NAMESPACE}`
