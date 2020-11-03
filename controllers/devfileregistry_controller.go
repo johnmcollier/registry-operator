@@ -22,19 +22,14 @@ import (
 	"github.com/go-logr/logr"
 	routev1 "github.com/openshift/api/route/v1"
 	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/discovery"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
 	registryv1alpha1 "github.com/devfile/registry-operator/api/v1alpha1"
+	"github.com/devfile/registry-operator/pkg/cluster"
 )
 
 // DevfileRegistryReconciler reconciles a DevfileRegistry object
@@ -76,383 +71,71 @@ func (r *DevfileRegistryReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 	}
 
 	// Check if the service already exists, if not create a new one
-	svcFound := &corev1.Service{}
-	err = r.Get(ctx, types.NamespacedName{Name: devfileRegistry.Name, Namespace: devfileRegistry.Namespace}, svcFound)
-	if err != nil && errors.IsNotFound(err) {
-		// Define a new service
-		pvc := r.generateDevfileRegistryService(devfileRegistry)
-		log.Info("Creating a new Service", "Service.Namespace", pvc.Namespace, "Service.Name", pvc.Name)
-		err = r.Create(ctx, pvc)
-		if err != nil {
-			log.Error(err, "Failed to create new Service", "Service.Namespace", pvc.Namespace, "Service.Name", pvc.Name)
-			return ctrl.Result{}, err
-		}
-	} else if err != nil {
-		log.Error(err, "Failed to get Service")
-		return ctrl.Result{}, err
+	result, err := r.ensureService(ctx, devfileRegistry)
+	if result != nil {
+		return *result, err
 	}
 
 	// Check if the persistentvolumeclaim already exists, if not create a new one
-	pvcFound := &corev1.PersistentVolumeClaim{}
-	err = r.Get(ctx, types.NamespacedName{Name: devfileRegistry.Name, Namespace: devfileRegistry.Namespace}, pvcFound)
-	if err != nil && errors.IsNotFound(err) {
-		// Define a new PVC
-		pvc := r.generateDevfileRegistryPVC(devfileRegistry)
-		log.Info("Creating a new PersistentVolumeClaim", "PersistentVolumeClaim.Namespace", pvc.Namespace, "PersistentVolumeClaim.Name", pvc.Name)
-		err = r.Create(ctx, pvc)
-		if err != nil {
-			log.Error(err, "Failed to create new PersistentVolumeClaim", "PersistentVolumeClaim.Namespace", pvc.Namespace, "PersistentVolumeClaim.Name", pvc.Name)
-			return ctrl.Result{}, err
-		}
-	} else if err != nil {
-		log.Error(err, "Failed to get PersistentVolumeClaim")
-		return ctrl.Result{}, err
+	result, err = r.ensurePVC(ctx, devfileRegistry)
+	if result != nil {
+		return *result, err
 	}
 
 	// Check if the deployment already exists, if not create a new one
-	depFound := &appsv1.Deployment{}
-	err = r.Get(ctx, types.NamespacedName{Name: devfileRegistry.Name, Namespace: devfileRegistry.Namespace}, depFound)
-	if err != nil && errors.IsNotFound(err) {
-		// Define a new Deployment
-		dep := r.generateDevfileRegistryDeployment(devfileRegistry)
-		log.Info("Creating a new Deployment", "Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
-		err = r.Create(ctx, dep)
-		if err != nil {
-			log.Error(err, "Failed to create new Deployment", "Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
-			return ctrl.Result{}, err
-		}
-		// Deployment created successfully - return and requeue
-		//return ctrl.Result{Requeue: true}, nil
-	} else if err != nil {
-		log.Error(err, "Failed to get Deployment")
-		return ctrl.Result{}, err
+	result, err = r.ensureDeployment(ctx, devfileRegistry)
+	if result != nil {
+		return *result, err
 	}
 
 	// Check if we're running on OpenShift
-	isOS, err := IsOpenShift()
+	// ToDo: Move to operator init in main.go so that we don't need to check on every reconcile
+	isOS, err := cluster.IsOpenShift()
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
+	hostname := devfileRegistry.Spec.IngressDomain
 	if isOS {
-		// Check if the two routes already exist, if not create new ones -- new func
-		hostname := devfileRegistry.Spec.IngressDomain
-		devfilesRouteFound := &routev1.Route{}
-		err = r.Get(ctx, types.NamespacedName{Name: devfileRegistry.Name + "-devfiles", Namespace: devfileRegistry.Namespace}, devfilesRouteFound)
-		if err != nil && errors.IsNotFound(err) {
-			// Define a new route exposing the devfile registry index
-			route := r.generateDevfilesRoute(devfileRegistry, hostname)
-			log.Info("Creating a new Route", "Route.Namespace", route.Namespace, "Route.Name", route.Name)
-			err = r.Create(ctx, route)
-			if err != nil {
-				log.Error(err, "Failed to create new Route", "Route.Namespace", route.Namespace, "Route.Name", route.Name)
-				return ctrl.Result{}, err
-			}
-			return ctrl.Result{Requeue: true}, nil
-		} else if err != nil {
-			log.Error(err, "Failed to get Route")
-			return ctrl.Result{}, err
+		// Check if the route exposing the devfile index exists
+		result, err = r.ensureDevfilesRoute(ctx, devfileRegistry, hostname)
+		if result != nil {
+			return *result, err
 		}
 
+		// If the route hostname was autodiscovered by OpenShift, need to retrieve the generated hostname.
+		// This is so that we can re-use the hostname in the second route and allows us to expose both routes under the same hostname
+		// ToDo: Extract into its own function
 		if hostname == "" {
 			// Get the hostname of the devfiles route
-			devfilesRouteFound = &routev1.Route{}
-			err = r.Get(ctx, types.NamespacedName{Name: devfileRegistry.Name + "-devfiles", Namespace: devfileRegistry.Namespace}, devfilesRouteFound)
+			devfilesRoute := &routev1.Route{}
+			err = r.Get(ctx, types.NamespacedName{Name: devfileRegistry.Name + "-devfiles", Namespace: devfileRegistry.Namespace}, devfilesRoute)
 			if err != nil {
+				// Log an error, but requeue, as the route may not have been registered yet in the Kube API
+				// See https://github.com/operator-framework/operator-sdk/issues/4013#issuecomment-707267616 for an explanation on why we requeue rather than error out here
 				log.Error(err, "Failed to get Route")
-				// Requeue, as the route may not have been registered yet in the Kube API
 				return ctrl.Result{Requeue: true}, nil
 			}
-			hostname = devfilesRouteFound.Spec.Host
+			hostname = devfilesRoute.Spec.Host
 		}
 
-		ociRouteFound := &routev1.Route{}
-		err = r.Get(ctx, types.NamespacedName{Name: devfileRegistry.Name + "-oci", Namespace: devfileRegistry.Namespace}, ociRouteFound)
-		if err != nil && errors.IsNotFound(err) {
-			// Define a new route exposing the devfile registry index
-			route := r.generateOCIRoute(devfileRegistry, hostname)
-			log.Info("Creating a new Route", "Route.Namespace", route.Namespace, "Route.Name", route.Name+"-oci")
-			err = r.Create(ctx, route)
-			if err != nil {
-				log.Error(err, "Failed to create new Route", "Route.Namespace", route.Namespace, "Route.Name", devfileRegistry.Name+"-oci")
-				return ctrl.Result{}, err
-			}
-			return ctrl.Result{Requeue: true}, nil
-		} else if err != nil {
-			log.Error(err, "Failed to get Route")
-			return ctrl.Result{}, err
+		// Check if the route exposing the devfile index exists
+		result, err = r.ensureOCIRoute(ctx, devfileRegistry, hostname)
+		if result != nil {
+			return *result, err
 		}
+	}
 
-		//devfileRegistry.Status.URL = devfilesRouteFound.Spec.Host
-		//log.Info(devfilesRouteFound.Spec.Host)
-		/*err := r.Status().Update(ctx, devfileRegistry)
-		log.Info("HERE 4")
+	if devfileRegistry.Status.URL != hostname {
+		devfileRegistry.Status.URL = hostname
+		err := r.Status().Update(ctx, devfileRegistry)
 		if err != nil {
-			log.Info("HERE 5")
 			log.Error(err, "Failed to update DevfileRegistry status")
 			return ctrl.Result{}, err
-		}*/
-		// Update the status if needed
-		log.Info("HOSTNAME")
-		log.Info(devfilesRouteFound.Spec.Host)
-		if devfileRegistry.Status.URL != hostname {
-			devfileRegistry.Status.URL = hostname
-			err := r.Status().Update(ctx, devfileRegistry)
-			if err != nil {
-				log.Error(err, "Failed to update DevfileRegistry status")
-				return ctrl.Result{}, err
-			}
 		}
 	}
 
 	return ctrl.Result{}, nil
-}
-
-// generateDevfileRegistryDeployment returns a devfileregistry Deployment object
-func (r *DevfileRegistryReconciler) generateDevfileRegistryDeployment(d *registryv1alpha1.DevfileRegistry) *appsv1.Deployment {
-	ls := labelsForDevfileRegistry(d.Name)
-	replicas := int32(1)
-
-	dep := &appsv1.Deployment{
-		ObjectMeta: generateObjectMeta(d.Name, d.Namespace, ls),
-		Spec: appsv1.DeploymentSpec{
-			Replicas: &replicas,
-			Selector: &metav1.LabelSelector{
-				MatchLabels: ls,
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: ls,
-				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Image: d.Spec.BootstrapImage,
-							Name:  "devfile-registry-bootstrap",
-							Ports: []corev1.ContainerPort{{
-								ContainerPort: 8080,
-							}},
-							Resources: corev1.ResourceRequirements{
-								Requests: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("100m"),
-									corev1.ResourceMemory: resource.MustParse("64Mi"),
-								},
-								Limits: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("250m"),
-									corev1.ResourceMemory: resource.MustParse("128Mi"),
-								},
-							},
-							LivenessProbe: &corev1.Probe{
-								Handler: corev1.Handler{
-									HTTPGet: &corev1.HTTPGetAction{
-										Path: "/devfiles/index.json",
-										Port: intstr.FromInt(8080),
-									},
-								},
-								InitialDelaySeconds: int32(3),
-								PeriodSeconds:       int32(3),
-							},
-							ReadinessProbe: &corev1.Probe{
-								Handler: corev1.Handler{
-									HTTPGet: &corev1.HTTPGetAction{
-										Path: "/devfiles/index.json",
-										Port: intstr.FromInt(8080),
-									},
-								},
-								InitialDelaySeconds: int32(3),
-								PeriodSeconds:       int32(3),
-							},
-						},
-						{
-							Image: "registry:latest",
-							Name:  "devfile-registry",
-							Ports: []corev1.ContainerPort{{
-								ContainerPort: 5000,
-							}},
-							Resources: corev1.ResourceRequirements{
-								Requests: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("100m"),
-									corev1.ResourceMemory: resource.MustParse("64Mi"),
-								},
-								Limits: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("500m"),
-									corev1.ResourceMemory: resource.MustParse("256Mi"),
-								},
-							},
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      "devfile-registry-storage",
-									MountPath: "/var/lib/registry",
-								},
-							},
-						},
-					},
-					Volumes: []corev1.Volume{
-						{
-							Name: "devfile-registry-storage",
-							VolumeSource: corev1.VolumeSource{
-								PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-									ClaimName: d.Name,
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-	// Set Memcached instance as the owner and controller
-	ctrl.SetControllerReference(d, dep, r.Scheme)
-	return dep
-}
-
-// generateDevfileRegistryService returns a devfileregistry Service object
-func (r *DevfileRegistryReconciler) generateDevfileRegistryService(d *registryv1alpha1.DevfileRegistry) *corev1.Service {
-	ls := labelsForDevfileRegistry(d.Name)
-
-	svc := &corev1.Service{
-		ObjectMeta: generateObjectMeta(d.Name, d.Namespace, ls),
-		Spec: corev1.ServiceSpec{
-			Ports: []corev1.ServicePort{
-				{
-					Name: "devfile-registry-metadata",
-					Port: int32(8080),
-				},
-				{
-					Name: "devfile-registry",
-					Port: int32(5000),
-				},
-			},
-			Selector: ls,
-		},
-	}
-
-	// Set DevfileRegistry instance as the owner and controller
-	ctrl.SetControllerReference(d, svc, r.Scheme)
-	return svc
-}
-
-// generateDevfileRegistryPVC returns a devfileregistry Service object
-func (r *DevfileRegistryReconciler) generateDevfileRegistryPVC(d *registryv1alpha1.DevfileRegistry) *corev1.PersistentVolumeClaim {
-	ls := labelsForDevfileRegistry(d.Name)
-
-	pvc := &corev1.PersistentVolumeClaim{
-		ObjectMeta: generateObjectMeta(d.Name, d.Namespace, ls),
-		Spec: corev1.PersistentVolumeClaimSpec{
-			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-			Resources: corev1.ResourceRequirements{
-				Requests: corev1.ResourceList{
-					corev1.ResourceStorage: resource.MustParse("10Gi"),
-				},
-			},
-		},
-	}
-
-	// Set DevfileRegistry instance as the owner and controller
-	ctrl.SetControllerReference(d, pvc, r.Scheme)
-	return pvc
-}
-
-// generateDevfileRegistryPVC returns a devfileregistry Service object
-func (r *DevfileRegistryReconciler) generateDevfilesRoute(d *registryv1alpha1.DevfileRegistry, host string) *routev1.Route {
-
-	ls := labelsForDevfileRegistry(d.Name)
-	weight := int32(100)
-
-	route := &routev1.Route{
-		ObjectMeta: generateObjectMeta(d.Name+"-devfiles", d.Namespace, ls),
-		Spec: routev1.RouteSpec{
-			To: routev1.RouteTargetReference{
-				Kind:   "Service",
-				Name:   d.Name,
-				Weight: &weight,
-			},
-			Port: &routev1.RoutePort{
-				TargetPort: intstr.FromString("devfile-registry-metadata"),
-			},
-			Path: "/",
-		},
-	}
-
-	if host != "" {
-		route.Spec.Host = host
-	}
-	// Set DevfileRegistry instance as the owner and controller
-	ctrl.SetControllerReference(d, route, r.Scheme)
-	return route
-}
-
-// generateDevfileRegistryPVC returns a devfileregistry Service object
-func (r *DevfileRegistryReconciler) generateOCIRoute(d *registryv1alpha1.DevfileRegistry, host string) *routev1.Route {
-	ls := labelsForDevfileRegistry(d.Name)
-	weight := int32(100)
-
-	route := &routev1.Route{
-		ObjectMeta: generateObjectMeta(d.Name+"-oci", d.Namespace, ls),
-		Spec: routev1.RouteSpec{
-			Host: host,
-			To: routev1.RouteTargetReference{
-				Kind:   "Service",
-				Name:   d.Name,
-				Weight: &weight,
-			},
-			Port: &routev1.RoutePort{
-				TargetPort: intstr.FromString("devfile-registry"),
-			},
-			Path: "/v2",
-		},
-	}
-
-	if host != "" {
-		route.Spec.Host = host
-	}
-
-	// Set DevfileRegistry instance as the owner and controller
-	ctrl.SetControllerReference(d, route, r.Scheme)
-	return route
-}
-
-func generateObjectMeta(name string, namespace string, labels map[string]string) metav1.ObjectMeta {
-	return metav1.ObjectMeta{
-		Name:      name,
-		Namespace: namespace,
-		Labels:    labels,
-	}
-}
-
-func IsOpenShift() (bool, error) {
-	kubeCfg, err := config.GetConfig()
-	if err != nil {
-		return false, err
-	}
-	discoveryClient, err := discovery.NewDiscoveryClientForConfig(kubeCfg)
-	if err != nil {
-		return false, err
-	}
-	apiList, err := discoveryClient.ServerGroups()
-	if err != nil {
-		return false, err
-	}
-	if findAPIGroup(apiList.Groups, "route.openshift.io") == nil {
-		return false, nil
-	} else {
-		return true, nil
-	}
-}
-
-func findAPIGroup(source []metav1.APIGroup, apiName string) *metav1.APIGroup {
-	for i := 0; i < len(source); i++ {
-		if source[i].Name == apiName {
-			return &source[i]
-		}
-	}
-	return nil
-}
-
-// labelsForDevfileRegistry returns the labels for selecting the resources
-// belonging to the given memcached CR name.
-func labelsForDevfileRegistry(name string) map[string]string {
-	return map[string]string{"app": "devfileregistry", "devfileregistry_cr": name}
 }
 
 func (r *DevfileRegistryReconciler) SetupWithManager(mgr ctrl.Manager) error {
