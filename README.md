@@ -38,11 +38,6 @@ Some of the rules supported by the makefile:
 
 To see all rules supported by the makefile, run `make help`
 
-### Test run controller
-1. Take a look samples workspace configuration in `./samples` folder.
-2. Apply any of them by executing `kubectl apply -f ./samples/workspace_java_mysql.yaml -n <namespace>`
-3. As soon as workspace is started you're able to get IDE url by executing `kubectl get devworkspace -n <namespace>`
-
 ### Run operator locally
 It's possible to run an instance of the operator locally while communicating with a cluster. 
 
