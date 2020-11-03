@@ -8,6 +8,11 @@ metadata:
   creationTimestamp: null
   name: devfileregistries.registry.devfile.io
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.url
+    description: The URL for the Devfile Registry
+    name: URL
+    type: string
   group: registry.devfile.io
   names:
     kind: DevfileRegistry

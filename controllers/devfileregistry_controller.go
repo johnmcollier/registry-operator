@@ -148,9 +148,22 @@ func (r *DevfileRegistryReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 				log.Error(err, "Failed to create new Route", "Route.Namespace", route.Namespace, "Route.Name", route.Name)
 				return ctrl.Result{}, err
 			}
+			return ctrl.Result{Requeue: true}, nil
 		} else if err != nil {
 			log.Error(err, "Failed to get Route")
 			return ctrl.Result{}, err
+		}
+
+		if hostname == "" {
+			// Get the hostname of the devfiles route
+			devfilesRouteFound = &routev1.Route{}
+			err = r.Get(ctx, types.NamespacedName{Name: devfileRegistry.Name + "-devfiles", Namespace: devfileRegistry.Namespace}, devfilesRouteFound)
+			if err != nil {
+				log.Error(err, "Failed to get Route")
+				// Requeue, as the route may not have been registered yet in the Kube API
+				return ctrl.Result{Requeue: true}, nil
+			}
+			hostname = devfilesRouteFound.Spec.Host
 		}
 
 		ociRouteFound := &routev1.Route{}
@@ -158,15 +171,37 @@ func (r *DevfileRegistryReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 		if err != nil && errors.IsNotFound(err) {
 			// Define a new route exposing the devfile registry index
 			route := r.generateOCIRoute(devfileRegistry, hostname)
-			log.Info("Creating a new Route", "Route.Namespace", route.Namespace, "Route.Name", route.Name)
+			log.Info("Creating a new Route", "Route.Namespace", route.Namespace, "Route.Name", route.Name+"-oci")
 			err = r.Create(ctx, route)
 			if err != nil {
 				log.Error(err, "Failed to create new Route", "Route.Namespace", route.Namespace, "Route.Name", devfileRegistry.Name+"-oci")
 				return ctrl.Result{}, err
 			}
+			return ctrl.Result{Requeue: true}, nil
 		} else if err != nil {
 			log.Error(err, "Failed to get Route")
 			return ctrl.Result{}, err
+		}
+
+		//devfileRegistry.Status.URL = devfilesRouteFound.Spec.Host
+		//log.Info(devfilesRouteFound.Spec.Host)
+		/*err := r.Status().Update(ctx, devfileRegistry)
+		log.Info("HERE 4")
+		if err != nil {
+			log.Info("HERE 5")
+			log.Error(err, "Failed to update DevfileRegistry status")
+			return ctrl.Result{}, err
+		}*/
+		// Update the status if needed
+		log.Info("HOSTNAME")
+		log.Info(devfilesRouteFound.Spec.Host)
+		if devfileRegistry.Status.URL != hostname {
+			devfileRegistry.Status.URL = hostname
+			err := r.Status().Update(ctx, devfileRegistry)
+			if err != nil {
+				log.Error(err, "Failed to update DevfileRegistry status")
+				return ctrl.Result{}, err
+			}
 		}
 	}
 
@@ -364,7 +399,7 @@ func (r *DevfileRegistryReconciler) generateOCIRoute(d *registryv1alpha1.Devfile
 			Port: &routev1.RoutePort{
 				TargetPort: intstr.FromString("devfile-registry"),
 			},
-			Path: "/",
+			Path: "/v2",
 		},
 	}
 
@@ -423,5 +458,7 @@ func labelsForDevfileRegistry(name string) map[string]string {
 func (r *DevfileRegistryReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&registryv1alpha1.DevfileRegistry{}).
+		Owns(&appsv1.Deployment{}).
+		Owns(&routev1.Route{}).
 		Complete(r)
 }

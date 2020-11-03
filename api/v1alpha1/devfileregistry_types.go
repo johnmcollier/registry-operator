@@ -46,6 +46,7 @@ type DevfileRegistryStatus struct {
 
 // DevfileRegistry is the Schema for the devfileregistries API
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="URL",type="string",JSONPath=".status.url",description="The URL for the Devfile Registry"
 type DevfileRegistry struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
