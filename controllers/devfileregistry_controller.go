@@ -30,6 +30,7 @@ import (
 
 	registryv1alpha1 "github.com/devfile/registry-operator/api/v1alpha1"
 	"github.com/devfile/registry-operator/pkg/cluster"
+	"github.com/devfile/registry-operator/pkg/config"
 )
 
 // DevfileRegistryReconciler reconciles a DevfileRegistry object
@@ -40,14 +41,11 @@ type DevfileRegistryReconciler struct {
 }
 
 // +kubebuilder:rbac:groups=registry.devfile.io,resources=devfileregistries,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=registry.devfile.io,resources=devfileregistries/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=registry.devfile.io,resources=devfileregistries/finalizers,verbs=get;update;patch
+// +kubebuilder:rbac:groups=registry.devfile.io,resources=devfileregistries/status;devfileregistries/finalizers,verbs=get;update;patch
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=core,resources=persistentvolumeclaims,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core,resources=services;persistentvolumeclaims,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;
-// +kubebuilder:rbac:groups=route.openshift.io,resources=routes,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=route.openshift.io,resources=routes/custom-host,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=route.openshift.io,resources=routes;routes/custom-host,verbs=get;list;watch;create;update;patch;delete
 
 func (r *DevfileRegistryReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
@@ -90,13 +88,13 @@ func (r *DevfileRegistryReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 
 	// Check if we're running on OpenShift
 	// ToDo: Move to operator init in main.go so that we don't need to check on every reconcile
-	isOS, err := cluster.IsOpenShift()
+	/*isOS, err := cluster.IsOpenShift()
 	if err != nil {
 		return ctrl.Result{}, err
-	}
+	}*/
 
 	hostname := devfileRegistry.Spec.IngressDomain
-	if isOS {
+	if config.ControllerCfg.IsOpenShift() {
 		// Check if the route exposing the devfile index exists
 		result, err = r.ensureDevfilesRoute(ctx, devfileRegistry, hostname)
 		if result != nil {
@@ -124,6 +122,8 @@ func (r *DevfileRegistryReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 		if result != nil {
 			return *result, err
 		}
+	} else {
+
 	}
 
 	if devfileRegistry.Status.URL != hostname {
@@ -139,6 +139,13 @@ func (r *DevfileRegistryReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 }
 
 func (r *DevfileRegistryReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	// Check if we're running on OpenShift
+	isOS, err := cluster.IsOpenShift()
+	if err != nil {
+		return err
+	}
+	config.ControllerCfg.SetIsOpenShift(isOS)
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&registryv1alpha1.DevfileRegistry{}).
 		Owns(&appsv1.Deployment{}).
