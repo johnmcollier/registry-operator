@@ -9,6 +9,7 @@ import (
 	"github.com/prometheus/common/log"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -106,7 +107,7 @@ func (r *DevfileRegistryReconciler) ensureOCIRoute(ctx context.Context, cr *regi
 	err := r.Get(ctx, types.NamespacedName{Name: registry.OCIRouteName(cr.Name), Namespace: cr.Namespace}, route)
 	if err != nil && errors.IsNotFound(err) {
 		// Define a new route exposing the devfile registry index
-		route := registry.GenerateOCIRoute(cr, hostname, r.Scheme)
+		route = registry.GenerateOCIRoute(cr, hostname, r.Scheme)
 		log.Info("Creating a new Route", "Route.Namespace", route.Namespace, "Route.Name", route.Name)
 		err = r.Create(ctx, route)
 		if err != nil {
@@ -116,6 +117,26 @@ func (r *DevfileRegistryReconciler) ensureOCIRoute(ctx context.Context, cr *regi
 		return nil, nil
 	} else if err != nil {
 		log.Error(err, "Failed to get Route")
+		return &ctrl.Result{}, err
+	}
+	return nil, nil
+}
+
+func (r *DevfileRegistryReconciler) ensureIngress(ctx context.Context, cr *registryv1alpha1.DevfileRegistry, hostname string) (*reconcile.Result, error) {
+	ingress := &v1beta1.Ingress{}
+	err := r.Get(ctx, types.NamespacedName{Name: registry.IngressName(cr.Name), Namespace: cr.Namespace}, ingress)
+	if err != nil && errors.IsNotFound(err) {
+		// Define a new ingress exposing the devfile index and oci registry
+		ingress = registry.GenerateIngress(cr, hostname, r.Scheme)
+		log.Info("Creating a new Ingress", "Ingress.Namespace", ingress.Namespace, "Ingress.Name", ingress.Name)
+		err = r.Create(ctx, ingress)
+		if err != nil {
+			log.Error(err, "Failed to create new Ingress", "Ingress.Namespace", ingress.Namespace, "Ingress.Name", ingress.Name)
+			return &ctrl.Result{}, err
+		}
+		return nil, nil
+	} else if err != nil {
+		log.Error(err, "Failed to get Ingress")
 		return &ctrl.Result{}, err
 	}
 	return nil, nil

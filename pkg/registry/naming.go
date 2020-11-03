@@ -18,6 +18,12 @@ func PVCName(devfileRegistryName string) string {
 	return devfileRegistryName
 }
 
+// IngressName returns the name of the Ingress object associated with the DevfileRegistry CR
+// Just returns the CR name right now, but extracting to a function to avoid relying on that assumption
+func IngressName(devfileRegistryName string) string {
+	return devfileRegistryName
+}
+
 // DevfilesRouteName returns the name of the route object associated with the devfile index route
 func DevfilesRouteName(devfileRegistryName string) string {
 	return devfileRegistryName + "-devfiles"

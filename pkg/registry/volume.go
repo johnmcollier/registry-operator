@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	DevfileRegistryVolumeSize = "10Gi"
+	DevfileRegistryVolumeSize = "3Gi"
 	DevfileRegistryVolumeName = "devfile-registry-storage"
 )
 

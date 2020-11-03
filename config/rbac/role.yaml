@@ -22,6 +22,7 @@ rules:
   - ""
   resources:
   - persistentvolumeclaims
+  - services
   verbs:
   - create
   - delete
@@ -38,9 +39,9 @@ rules:
   - get
   - list
 - apiGroups:
-  - ""
+  - extensions
   resources:
-  - services
+  - ingresses
   verbs:
   - create
   - delete
@@ -65,13 +66,6 @@ rules:
   - registry.devfile.io
   resources:
   - devfileregistries/finalizers
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - registry.devfile.io
-  resources:
   - devfileregistries/status
   verbs:
   - get
@@ -81,17 +75,6 @@ rules:
   - route.openshift.io
   resources:
   - routes
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - route.openshift.io
-  resources:
   - routes/custom-host
   verbs:
   - create

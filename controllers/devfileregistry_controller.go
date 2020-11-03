@@ -22,6 +22,8 @@ import (
 	"github.com/go-logr/logr"
 	routev1 "github.com/openshift/api/route/v1"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -45,6 +47,7 @@ type DevfileRegistryReconciler struct {
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=services;persistentvolumeclaims,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;
+// +kubebuilder:rbac:groups=extensions,resources=ingresses,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=route.openshift.io,resources=routes;routes/custom-host,verbs=get;list;watch;create;update;patch;delete
 
 func (r *DevfileRegistryReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
@@ -123,7 +126,11 @@ func (r *DevfileRegistryReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 			return *result, err
 		}
 	} else {
-
+		// Check if the ingress already exists, if not create a new one
+		result, err = r.ensureIngress(ctx, devfileRegistry, hostname)
+		if result != nil {
+			return *result, err
+		}
 	}
 
 	if devfileRegistry.Status.URL != hostname {
@@ -146,9 +153,17 @@ func (r *DevfileRegistryReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 	config.ControllerCfg.SetIsOpenShift(isOS)
 
-	return ctrl.NewControllerManagedBy(mgr).
+	builder := ctrl.NewControllerManagedBy(mgr).
 		For(&registryv1alpha1.DevfileRegistry{}).
 		Owns(&appsv1.Deployment{}).
-		Owns(&routev1.Route{}).
-		Complete(r)
+		Owns(&corev1.Service{}).
+		Owns(&corev1.PersistentVolumeClaim{}).
+		Owns(&v1beta1.Ingress{})
+
+	if config.ControllerCfg.IsOpenShift() {
+		builder.Owns(&routev1.Route{})
+	}
+
+	return builder.Complete(r)
+
 }

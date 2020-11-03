@@ -4,3 +4,4 @@ metadata:
   name: devfileregistry-sample
 spec:
   bootstrapImage: quay.io/devfile/metadata-server:latest
+  ociRegistryImage: registry:latest
