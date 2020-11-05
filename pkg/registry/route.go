@@ -53,7 +53,7 @@ func GenerateOCIRoute(cr *registryv1alpha1.DevfileRegistry, host string, scheme 
 				Weight: &weight,
 			},
 			Port: &routev1.RoutePort{
-				TargetPort: intstr.FromString("devfile-registry"),
+				TargetPort: intstr.FromString(OCIRegistryPortName),
 			},
 			Path: "/v2",
 		},
