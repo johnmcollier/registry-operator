@@ -18,6 +18,9 @@ spec:
     kind: DevfileRegistry
     listKind: DevfileRegistryList
     plural: devfileregistries
+    shortNames:
+    - devreg
+    - dr
     singular: devfileregistry
   scope: Namespaced
   subresources:
@@ -41,14 +44,35 @@ spec:
         spec:
           description: DevfileRegistrySpec defines the desired state of DevfileRegistry
           properties:
-            bootstrapImage:
-              description: Foo is an example field of DevfileRegistry. Edit DevfileRegistry_types.go
-                to remove/update
+            devfileIndexImage:
               type: string
-            ingressDomain:
-              type: string
+            k8s:
+              description: DevfileRegistrySpecK8sOnly defines the desired state of
+                the kubernetes-only fields of the DevfileRegistry
+              properties:
+                ingressDomain:
+                  type: string
+              type: object
             ociRegistryImage:
               type: string
+            storage:
+              description: DevfileRegistrySpecStorage defines the desired state of
+                the storage for the DevfileRegistry
+              properties:
+                enabled:
+                  type: boolean
+                ociRegistryImage:
+                  type: string
+              type: object
+            tls:
+              description: DevfileRegistrySpecTLS defines the desired state for TLS
+                in the DevfileRegistry
+              properties:
+                enabled:
+                  type: boolean
+                ociRegistryImage:
+                  type: string
+              type: object
           type: object
         status:
           description: DevfileRegistryStatus defines the observed state of DevfileRegistry

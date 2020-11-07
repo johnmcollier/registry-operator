@@ -28,10 +28,28 @@ type DevfileRegistrySpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of DevfileRegistry. Edit DevfileRegistry_types.go to remove/update
-	BootstrapImage   string `json:"bootstrapImage,omitempty"`
-	OciRegistryImage string `json:"ociRegistryImage,omitempty"`
-	IngressDomain    string `json:"ingressDomain,omitempty"`
+	DevfileIndexImage string                     `json:"devfileIndexImage,omitempty"`
+	OciRegistryImage  string                     `json:"ociRegistryImage,omitempty"`
+	Storage           DevfileRegistrySpecStorage `json:"storage,omitempty"`
+	TLS               DevfileRegistrySpecTLS     `json:"tls,omitempty"`
+	K8s               DevfileRegistrySpecK8sOnly `json:"k8s,omitempty"`
+}
+
+// DevfileRegistrySpecStorage defines the desired state of the storage for the DevfileRegistry
+type DevfileRegistrySpecStorage struct {
+	Enabled            *bool  `json:"enabled,omitempty"`
+	RegistryVolumeSize string `json:"ociRegistryImage,omitempty"`
+}
+
+// DevfileRegistrySpecTLS defines the desired state for TLS in the DevfileRegistry
+type DevfileRegistrySpecTLS struct {
+	Enabled    *bool  `json:"enabled,omitempty"`
+	SecretName string `json:"ociRegistryImage,omitempty"`
+}
+
+// DevfileRegistrySpecK8sOnly defines the desired state of the kubernetes-only fields of the DevfileRegistry
+type DevfileRegistrySpecK8sOnly struct {
+	IngressDomain string `json:"ingressDomain,omitempty"`
 }
 
 // DevfileRegistryStatus defines the observed state of DevfileRegistry
@@ -45,6 +63,7 @@ type DevfileRegistryStatus struct {
 // +kubebuilder:subresource:status
 
 // DevfileRegistry is the Schema for the devfileregistries API
+// +kubebuilder:resource:path=devfileregistries,shortName=devreg;dr
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="URL",type="string",JSONPath=".status.url",description="The URL for the Devfile Registry"
 type DevfileRegistry struct {

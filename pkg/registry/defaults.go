@@ -51,8 +51,8 @@ func getDevfileRegistryVolumeSource(cr *registryv1alpha1.DevfileRegistry) corev1
 // IsDevfileRegistryStorageEnabled returns true if storage.Enabled is set in the DevfileRegistry CR
 // If it's not set, it returns true by default.
 func IsDevfileRegistryStorageEnabled(cr *registryv1alpha1.DevfileRegistry) bool {
-	if cr.Spec.Storage.Enabled {
-		return cr.Spec.Storage.Enabled
+	if cr.Spec.Storage.Enabled != nil {
+		return *cr.Spec.Storage.Enabled
 	}
 	return DevfileRegistryVolumeEnabled
 }
