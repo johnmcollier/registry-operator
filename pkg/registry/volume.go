@@ -9,11 +9,6 @@ import (
 	registryv1alpha1 "github.com/devfile/registry-operator/api/v1alpha1"
 )
 
-const (
-	DevfileRegistryVolumeSize = "3Gi"
-	DevfileRegistryVolumeName = "devfile-registry-storage"
-)
-
 // GenerateDevfileRegistryPVC returns a PVC for providing storage on the OCI registry container
 func GeneratePVC(cr *registryv1alpha1.DevfileRegistry, scheme *runtime.Scheme) *corev1.PersistentVolumeClaim {
 	ls := LabelsForDevfileRegistry(cr.Name)
@@ -24,7 +19,7 @@ func GeneratePVC(cr *registryv1alpha1.DevfileRegistry, scheme *runtime.Scheme) *
 			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
 			Resources: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{
-					corev1.ResourceStorage: resource.MustParse(DevfileRegistryVolumeSize),
+					corev1.ResourceStorage: resource.MustParse(getDevfileRegistryVolumeSize(cr)),
 				},
 			},
 		},

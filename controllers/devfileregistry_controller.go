@@ -33,6 +33,7 @@ import (
 	registryv1alpha1 "github.com/devfile/registry-operator/api/v1alpha1"
 	"github.com/devfile/registry-operator/pkg/cluster"
 	"github.com/devfile/registry-operator/pkg/config"
+	"github.com/devfile/registry-operator/pkg/registry"
 )
 
 // DevfileRegistryReconciler reconciles a DevfileRegistry object
@@ -77,10 +78,12 @@ func (r *DevfileRegistryReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 		return *result, err
 	}
 
-	// Check if the persistentvolumeclaim already exists, if not create a new one
-	result, err = r.ensurePVC(ctx, devfileRegistry)
-	if result != nil {
-		return *result, err
+	if registry.IsDevfileRegistryStorageEnabled(devfileRegistry) {
+		// Check if the persistentvolumeclaim already exists, if not create a new one
+		result, err = r.ensurePVC(ctx, devfileRegistry)
+		if result != nil {
+			return *result, err
+		}
 	}
 
 	// Check if the deployment already exists, if not create a new one
@@ -96,7 +99,7 @@ func (r *DevfileRegistryReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 		return ctrl.Result{}, err
 	}*/
 
-	hostname := devfileRegistry.Spec.IngressDomain
+	hostname := devfileRegistry.Spec.K8s.IngressDomain
 	if config.ControllerCfg.IsOpenShift() {
 		// Check if the route exposing the devfile index exists
 		result, err = r.ensureDevfilesRoute(ctx, devfileRegistry, hostname)
@@ -106,7 +109,6 @@ func (r *DevfileRegistryReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 
 		// If the route hostname was autodiscovered by OpenShift, need to retrieve the generated hostname.
 		// This is so that we can re-use the hostname in the second route and allows us to expose both routes under the same hostname
-		// ToDo: Extract into its own function
 		if hostname == "" {
 			// Get the hostname of the devfiles route
 			devfilesRoute := &routev1.Route{}
@@ -160,6 +162,7 @@ func (r *DevfileRegistryReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&corev1.PersistentVolumeClaim{}).
 		Owns(&v1beta1.Ingress{})
 
+	// If on OpenShift, mark routes as owned by the controller
 	if config.ControllerCfg.IsOpenShift() {
 		builder.Owns(&routev1.Route{})
 	}

@@ -30,10 +30,10 @@ func GenerateDeployment(cr *registryv1alpha1.DevfileRegistry, scheme *runtime.Sc
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
-							Image: cr.Spec.BootstrapImage,
+							Image: cr.Spec.DevfileIndexImage,
 							Name:  "devfile-registry-bootstrap",
 							Ports: []corev1.ContainerPort{{
-								ContainerPort: 8080,
+								ContainerPort: DevfileIndexPort,
 							}},
 							Resources: corev1.ResourceRequirements{
 								Requests: corev1.ResourceList{
@@ -49,7 +49,7 @@ func GenerateDeployment(cr *registryv1alpha1.DevfileRegistry, scheme *runtime.Sc
 								Handler: corev1.Handler{
 									HTTPGet: &corev1.HTTPGetAction{
 										Path: "/devfiles/index.json",
-										Port: intstr.FromInt(8080),
+										Port: intstr.FromInt(DevfileIndexPort),
 									},
 								},
 								InitialDelaySeconds: int32(3),
@@ -59,7 +59,7 @@ func GenerateDeployment(cr *registryv1alpha1.DevfileRegistry, scheme *runtime.Sc
 								Handler: corev1.Handler{
 									HTTPGet: &corev1.HTTPGetAction{
 										Path: "/devfiles/index.json",
-										Port: intstr.FromInt(8080),
+										Port: intstr.FromInt(DevfileIndexPort),
 									},
 								},
 								InitialDelaySeconds: int32(3),
@@ -67,10 +67,10 @@ func GenerateDeployment(cr *registryv1alpha1.DevfileRegistry, scheme *runtime.Sc
 							},
 						},
 						{
-							Image: "registry:latest",
+							Image: getOCIREgistryImage(cr),
 							Name:  "oci-registry",
 							Ports: []corev1.ContainerPort{{
-								ContainerPort: 5000,
+								ContainerPort: OCIRegistryPort,
 							}},
 							Resources: corev1.ResourceRequirements{
 								Requests: corev1.ResourceList{
@@ -84,7 +84,7 @@ func GenerateDeployment(cr *registryv1alpha1.DevfileRegistry, scheme *runtime.Sc
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
-									Name:      "devfile-registry-storage",
+									Name:      DevfileRegistryVolumeName,
 									MountPath: "/var/lib/registry",
 								},
 							},
@@ -92,12 +92,8 @@ func GenerateDeployment(cr *registryv1alpha1.DevfileRegistry, scheme *runtime.Sc
 					},
 					Volumes: []corev1.Volume{
 						{
-							Name: "devfile-registry-storage",
-							VolumeSource: corev1.VolumeSource{
-								PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-									ClaimName: PVCName(cr.Name),
-								},
-							},
+							Name:         DevfileRegistryVolumeName,
+							VolumeSource: getDevfileRegistryVolumeSource(cr),
 						},
 					},
 				},

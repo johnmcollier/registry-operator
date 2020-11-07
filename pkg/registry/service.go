@@ -8,13 +8,6 @@ import (
 	registryv1alpha1 "github.com/devfile/registry-operator/api/v1alpha1"
 )
 
-const (
-	DevfileIndexPortName = "devfile-registry-metadata"
-	DevfileIndexPort     = int32(8080)
-	OCIRegistryPortName  = "oci-registry"
-	OCIRegistryPort      = int32(5000)
-)
-
 // GenerateDevfileRegistryService returns a devfileregistry Service object
 func GenerateService(cr *registryv1alpha1.DevfileRegistry, scheme *runtime.Scheme) *corev1.Service {
 	ls := LabelsForDevfileRegistry(cr.Name)
