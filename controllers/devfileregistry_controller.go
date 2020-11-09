@@ -129,6 +129,7 @@ func (r *DevfileRegistryReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 		}
 	} else {
 		// Check if the ingress already exists, if not create a new one
+		hostname = registry.GetDevfileRegistryIngress(devfileRegistry)
 		result, err = r.ensureIngress(ctx, devfileRegistry, hostname)
 		if result != nil {
 			return *result, err

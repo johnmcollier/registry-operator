@@ -46,3 +46,7 @@ func GenerateIngress(cr *registryv1alpha1.DevfileRegistry, host string, scheme *
 	ctrl.SetControllerReference(cr, ingress, scheme)
 	return ingress
 }
+
+func GetDevfileRegistryIngress(cr *registryv1alpha1.DevfileRegistry) string {
+	return cr.Name + "." + cr.Spec.K8s.IngressDomain
+}
