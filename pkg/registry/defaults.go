@@ -11,7 +11,7 @@ const (
 	DefaultOCIRegistryImage  = "registry:2.7.1"
 
 	// Defaults/constants for devfile registry storages
-	DefaultDevfileRegistryVolumeSize = "3Gi"
+	DefaultDevfileRegistryVolumeSize = "1Gi"
 	DevfileRegistryVolumeEnabled     = true
 	DevfileRegistryVolumeName        = "devfile-registry-storage"
 
