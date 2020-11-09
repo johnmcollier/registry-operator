@@ -59,9 +59,24 @@ deploy: manifests kustomize
 manifests: controller-gen
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 
-# Run go fmt against code
+### fmt: Run go fmt against code
 fmt:
-	go fmt ./...
+ifneq ($(shell command -v goimports 2> /dev/null),)
+	find . -name '*.go' -exec goimports -w {} \;
+else
+	@echo "WARN: goimports is not installed -- formatting using go fmt instead."
+	@echo "      Please install goimports to ensure file imports are consistent."
+	go fmt -x ./...
+endif
+
+### fmt_license: ensure license header is set on all files
+fmt_license:
+ifneq ($(shell command -v addlicense 2> /dev/null),)
+	@echo 'addlicense -v -f license_header.txt **/*.go'
+	@addlicense -v -f license_header.txt $$(find . -name '*.go')
+else
+	$(error addlicense must be installed for this rule: go get -u github.com/google/addlicense)
+endif
 
 # Run go vet against code
 vet:
