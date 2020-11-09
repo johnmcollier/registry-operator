@@ -23,11 +23,6 @@ jobs:
       with:
         go-version: ^1.12
     -
-      name: Set up Python 3.8
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.8
-    -
       name: Check out code into the Go module directory
       uses: actions/checkout@v2
     -
@@ -72,11 +67,6 @@ jobs:
     -
       name: Check CRD manifest generation
       run: make manifests
-    -
-      name: Run Go Tests
-      run: |
-        python -m pip install --upgrade pip yq
-        make test
 
   docker:
     name: Check docker build
