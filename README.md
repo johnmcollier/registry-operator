@@ -23,7 +23,6 @@ The repository contains a Makefile; building and deploying can be configured via
 |variable|purpose|default value|
 |---|---|---|
 | `IMG` | Image used for controller | `johncollier/registry-operator:v0.0.1` |
-| `TOOL` | CLI tool for interfacing with the cluster: `kubectl` or `oc`; if `oc` is used, deployment is tailored to OpenShift, otherwise Kubernetes | `oc` |
 
 Some of the rules supported by the makefile:
 
