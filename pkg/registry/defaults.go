@@ -33,8 +33,8 @@ const (
 	OCIRegistryPort      = 5000
 )
 
-func getOCIREgistryImage(cr *registryv1alpha1.DevfileRegistry) string {
-	if cr.Spec.OciRegistryImage == "" {
+func getOCIRegistryImage(cr *registryv1alpha1.DevfileRegistry) string {
+	if cr.Spec.OciRegistryImage != "" {
 		return cr.Spec.OciRegistryImage
 	}
 	return DefaultOCIRegistryImage

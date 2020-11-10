@@ -78,7 +78,7 @@ func GenerateDeployment(cr *registryv1alpha1.DevfileRegistry, scheme *runtime.Sc
 							},
 						},
 						{
-							Image: getOCIREgistryImage(cr),
+							Image: getOCIRegistryImage(cr),
 							Name:  "oci-registry",
 							Ports: []corev1.ContainerPort{{
 								ContainerPort: OCIRegistryPort,
