@@ -21,7 +21,7 @@ The repository contains a Makefile; building and deploying can be configured via
 
 |variable|purpose|default value|
 |---|---|---|
-| `IMG` | Image used for controller | `johncollier/registry-operator:v0.0.1` |
+| `IMG` | Image used for controller | `quay.io/devfile/registry-operator:next` |
 
 Some of the rules supported by the makefile:
 
