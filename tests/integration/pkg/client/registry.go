@@ -60,3 +60,22 @@ func (w *K8sClient) WaitForRegistryInstance(name string, timeout time.Duration) 
 		return false, nil
 	})
 }
+
+// WaitForURLChange polls up to timeout seconds for the registry's URL to change in the status and returns it.
+// If the URL doesn't change in the specified timeout, an error is returned
+func (w *K8sClient) WaitForURLChange(name string, oldURL string, timeout time.Duration) (string, error) {
+	var newURL string
+	err := wait.PollImmediate(time.Second, timeout, func() (bool, error) {
+		devfileRegistry, err := w.GetRegistryInstance(name)
+		if err != nil {
+			return false, err
+		}
+		if devfileRegistry.Status.URL != oldURL {
+			newURL = devfileRegistry.Status.URL
+			return true, nil
+		}
+		return false, nil
+	})
+
+	return newURL, err
+}

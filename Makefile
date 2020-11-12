@@ -31,12 +31,12 @@ ENVTEST_ASSETS_DIR = $(shell pwd)/testbin
 test: generate fmt vet manifests
 	mkdir -p $(ENVTEST_ASSETS_DIR)
 	test -f $(ENVTEST_ASSETS_DIR)/setup-envtest.sh || curl -sSLo $(ENVTEST_ASSETS_DIR)/setup-envtest.sh https://raw.githubusercontent.com/kubernetes-sigs/controller-runtime/v0.6.3/hack/setup-envtest.sh
-	#source $(ENVTEST_ASSETS_DIR)/setup-envtest.sh; fetch_envtest_tools $(ENVTEST_ASSETS_DIR); setup_envtest_env $(ENVTEST_ASSETS_DIR); go test ./... -coverprofile cover.out
+	source $(ENVTEST_ASSETS_DIR)/setup-envtest.sh; fetch_envtest_tools $(ENVTEST_ASSETS_DIR); setup_envtest_env $(ENVTEST_ASSETS_DIR); go test ./pkg/... -coverprofile cover.out
 
-### test_integration: runs integration tests on the cluster set in context.
-test_integration: generate fmt vet manifests
-	CGO_ENABLED=0 go test -v -c -o bin/devfileregistry-operator-e2e ./tests/integration/cmd/devfileregistry_test.go
-	./bin/devfileregistry-operator-e2e
+### test-integration: runs integration tests on the cluster set in context.
+test-integration: generate fmt vet manifests
+	CGO_ENABLED=0 go test -v -c -o bin/devfileregistry-operator-integration ./tests/integration/cmd/devfileregistry_test.go
+	./bin/devfileregistry-operator-integration
 
 # Build manager binary
 manager: generate fmt vet

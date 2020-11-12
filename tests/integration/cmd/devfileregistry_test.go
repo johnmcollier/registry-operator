@@ -20,6 +20,7 @@ import (
 
 	"github.com/devfile/registry-operator/tests/integration/pkg/config"
 	"github.com/devfile/registry-operator/tests/integration/pkg/deploy"
+	"github.com/devfile/registry-operator/tests/integration/pkg/tests"
 
 	"github.com/devfile/registry-operator/tests/integration/pkg/client"
 	_ "github.com/devfile/registry-operator/tests/integration/pkg/tests"
@@ -66,6 +67,12 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 
 	if err := operator.DeployDevfileRegistryOperator(); err != nil {
 		fmt.Println("Failed to deploy DevfileRegistry operator")
+		panic(err)
+	}
+
+	tests.K8sClient, err = client.NewK8sClient()
+	if err != nil {
+		fmt.Println("Failed to create k8s client: " + err.Error())
 		panic(err)
 	}
 

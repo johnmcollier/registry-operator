@@ -1,7 +1,7 @@
 apiVersion: registry.devfile.io/v1alpha1
 kind: DevfileRegistry
 metadata:
-  name: devfile-registry
+  name: devfileregistry-update
 spec:
   devfileIndexImage: quay.io/devfile/metadata-server:latest
   storage:
