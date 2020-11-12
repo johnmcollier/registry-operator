@@ -12,7 +12,6 @@ The controller can be deployed to a cluster provided you are logged in with clus
 
 ```bash
 export IMG=johncollier/registry-operator:v0.0.1
-export TOOL=oc # Use 'export TOOL=kubectl' for kubernetes
 make install && make deploy
 ```
 
