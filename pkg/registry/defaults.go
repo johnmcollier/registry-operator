@@ -26,6 +26,8 @@ const (
 	DevfileRegistryVolumeEnabled     = true
 	DevfileRegistryVolumeName        = "devfile-registry-storage"
 
+	DevfileRegistryTLSEnabled = true
+
 	// Defaults/constants for devfile registry services
 	DevfileIndexPortName = "devfile-registry-metadata"
 	DevfileIndexPort     = 8080
@@ -33,7 +35,7 @@ const (
 	OCIRegistryPort      = 5000
 )
 
-func getOCIRegistryImage(cr *registryv1alpha1.DevfileRegistry) string {
+func GetOCIRegistryImage(cr *registryv1alpha1.DevfileRegistry) string {
 	if cr.Spec.OciRegistryImage != "" {
 		return cr.Spec.OciRegistryImage
 	}
@@ -47,7 +49,7 @@ func getDevfileRegistryVolumeSize(cr *registryv1alpha1.DevfileRegistry) string {
 	return DefaultDevfileRegistryVolumeSize
 }
 
-func getDevfileRegistryVolumeSource(cr *registryv1alpha1.DevfileRegistry) corev1.VolumeSource {
+func GetDevfileRegistryVolumeSource(cr *registryv1alpha1.DevfileRegistry) corev1.VolumeSource {
 	if IsStorageEnabled(cr) {
 		return corev1.VolumeSource{
 			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
@@ -59,11 +61,20 @@ func getDevfileRegistryVolumeSource(cr *registryv1alpha1.DevfileRegistry) corev1
 	return corev1.VolumeSource{}
 }
 
-// IsStorageEnabled returns true if storage.Enabled is set in the DevfileRegistry CR
+// IsStorageEnabled returns true if storage.enabled is set in the DevfileRegistry CR
 // If it's not set, it returns true by default.
 func IsStorageEnabled(cr *registryv1alpha1.DevfileRegistry) bool {
 	if cr.Spec.Storage.Enabled != nil {
 		return *cr.Spec.Storage.Enabled
 	}
 	return DevfileRegistryVolumeEnabled
+}
+
+// IsTLSEnabled returns true if tls.enabled is set in the DevfileRegistry CR
+// If it's not set, it returns true by default.
+func IsTLSEnabled(cr *registryv1alpha1.DevfileRegistry) bool {
+	if cr.Spec.TLS.Enabled != nil {
+		return *cr.Spec.TLS.Enabled
+	}
+	return DevfileRegistryTLSEnabled
 }

@@ -21,7 +21,7 @@ import (
 )
 
 // GenerateDevfilesRoute returns a route exposing the devfile registry index
-func GenerateDevfilesRoute(cr *registryv1alpha1.DevfileRegistry, host string, scheme *runtime.Scheme, labels map[string]string) *routev1.Route {
+func GenerateDevfilesRoute(cr *registryv1alpha1.DevfileRegistry, scheme *runtime.Scheme, labels map[string]string) *routev1.Route {
 	weight := int32(100)
 
 	route := &routev1.Route{
@@ -43,9 +43,6 @@ func GenerateDevfilesRoute(cr *registryv1alpha1.DevfileRegistry, host string, sc
 		route.Spec.TLS = &routev1.TLSConfig{Termination: routev1.TLSTerminationEdge}
 	}
 
-	if host != "" {
-		route.Spec.Host = GetDevfileRegistryIngress(cr)
-	}
 	// Set DevfileRegistry instance as the owner and controller
 	ctrl.SetControllerReference(cr, route, scheme)
 	return route
@@ -76,7 +73,7 @@ func GenerateOCIRoute(cr *registryv1alpha1.DevfileRegistry, host string, scheme 
 	}
 
 	if host != "" {
-		route.Spec.Host = GetDevfileRegistryIngress(cr)
+		route.Spec.Host = host
 	}
 
 	// Set DevfileRegistry instance as the owner and controller

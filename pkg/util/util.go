@@ -13,6 +13,7 @@
 package util
 
 import (
+	"crypto/tls"
 	"net/http"
 	"time"
 
@@ -23,7 +24,11 @@ import (
 // Returns an error if the pod never enters the running state.
 func WaitForServer(url string, timeout time.Duration) error {
 	return wait.PollImmediate(time.Second, timeout, func() (bool, error) {
-		resp, err := http.Get(url)
+		tr := &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+		client := &http.Client{Transport: tr}
+		resp, err := client.Get(url)
 		if err != nil {
 			return false, err
 		}

@@ -91,11 +91,20 @@ func (r *DevfileRegistryReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 		return *result, err
 	}
 
+	// Check to see if there's an old PVC that needs to be deleted
+	// Has to happen AFTER the deployment has been updated to remove the volume mount
+	if !registry.IsStorageEnabled(devfileRegistry) {
+		err = r.deletePVCIfNeeded(ctx, devfileRegistry)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
 	// Create/update the ingress/route for the devfile registry
 	hostname := devfileRegistry.Spec.K8s.IngressDomain
 	if config.ControllerCfg.IsOpenShift() {
 		// Check if the route exposing the devfile index exists
-		result, err = r.ensureDevfilesRoute(ctx, devfileRegistry, hostname, labels)
+		result, err = r.ensureDevfilesRoute(ctx, devfileRegistry, labels)
 		if result != nil {
 			return *result, err
 		}
@@ -129,26 +138,28 @@ func (r *DevfileRegistryReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 		}
 	}
 
-	if devfileRegistry.Status.URL != hostname {
+	var devfileRegistryServer string
+	if registry.IsTLSEnabled(devfileRegistry) {
+		devfileRegistryServer = "https://" + hostname
+	} else {
+		devfileRegistryServer = "http://" + hostname
+	}
+
+	if devfileRegistry.Status.URL != devfileRegistryServer {
 		// Check to see if the registry is active, and if so, update the status to reflect the URL
-		var protocol string
-		if devfileRegistry.Spec.TLS.Enabled != nil && !*devfileRegistry.Spec.TLS.Enabled {
-			protocol = "http://"
-		} else {
-			protocol = "https://"
-		}
-		err = util.WaitForServer(protocol+hostname, 30*time.Second)
+
+		err = util.WaitForServer(devfileRegistryServer, 30*time.Second)
 		if err != nil {
 			log.Error(err, "Devfile registry server failed to start after 30 seconds, requeing...")
 			return ctrl.Result{Requeue: true}, err
 		}
 
 		// Update the status
-		devfileRegistry.Status.URL = hostname
+		devfileRegistry.Status.URL = devfileRegistryServer
 		err := r.Status().Update(ctx, devfileRegistry)
 		if err != nil {
 			log.Error(err, "Failed to update DevfileRegistry status")
-			return ctrl.Result{}, err
+			return ctrl.Result{Requeue: true}, err
 		}
 	}
 

@@ -70,6 +70,11 @@ func (r *DevfileRegistryReconciler) ensureDeployment(ctx context.Context, cr *re
 		return &ctrl.Result{}, err
 	}
 
+	err = r.updateDeployment(ctx, cr, dep)
+	if err != nil {
+		log.Error(err, "Failed to update Deployment")
+		return &ctrl.Result{}, err
+	}
 	return nil, nil
 }
 
@@ -91,15 +96,16 @@ func (r *DevfileRegistryReconciler) ensurePVC(ctx context.Context, cr *registryv
 		log.Error(err, "Failed to get PersistentVolumeClaim")
 		return &ctrl.Result{}, err
 	}
+
 	return nil, nil
 }
 
-func (r *DevfileRegistryReconciler) ensureDevfilesRoute(ctx context.Context, cr *registryv1alpha1.DevfileRegistry, hostname string, labels map[string]string) (*reconcile.Result, error) {
+func (r *DevfileRegistryReconciler) ensureDevfilesRoute(ctx context.Context, cr *registryv1alpha1.DevfileRegistry, labels map[string]string) (*reconcile.Result, error) {
 	route := &routev1.Route{}
 	err := r.Get(ctx, types.NamespacedName{Name: registry.DevfilesRouteName(cr.Name), Namespace: cr.Namespace}, route)
 	if err != nil && errors.IsNotFound(err) {
 		// Define a new route exposing the devfile registry index
-		route := registry.GenerateDevfilesRoute(cr, hostname, r.Scheme, labels)
+		route := registry.GenerateDevfilesRoute(cr, r.Scheme, labels)
 		log.Info("Creating a new Route", "Route.Namespace", route.Namespace, "Route.Name", route.Name)
 		err = r.Create(ctx, route)
 		if err != nil {
@@ -111,6 +117,13 @@ func (r *DevfileRegistryReconciler) ensureDevfilesRoute(ctx context.Context, cr 
 		log.Error(err, "Failed to get Route")
 		return &ctrl.Result{}, err
 	}
+
+	err = r.updateDevfilesRoute(ctx, cr, route)
+	if err != nil {
+		log.Error(err, "Failed to update Route")
+		return &ctrl.Result{}, err
+	}
+
 	return nil, nil
 }
 
@@ -131,6 +144,13 @@ func (r *DevfileRegistryReconciler) ensureOCIRoute(ctx context.Context, cr *regi
 		log.Error(err, "Failed to get Route")
 		return &ctrl.Result{}, err
 	}
+
+	err = r.updateOCIRoute(ctx, cr, route)
+	if err != nil {
+		log.Error(err, "Failed to update Route")
+		return &ctrl.Result{}, err
+	}
+
 	return nil, nil
 }
 
@@ -149,6 +169,12 @@ func (r *DevfileRegistryReconciler) ensureIngress(ctx context.Context, cr *regis
 		return nil, nil
 	} else if err != nil {
 		log.Error(err, "Failed to get Ingress")
+		return &ctrl.Result{}, err
+	}
+
+	err = r.updateIngress(ctx, cr, hostname, ingress)
+	if err != nil {
+		log.Error(err, "Failed to update Ingress")
 		return &ctrl.Result{}, err
 	}
 	return nil, nil

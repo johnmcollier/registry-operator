@@ -51,6 +51,15 @@ func GenerateIngress(cr *registryv1alpha1.DevfileRegistry, host string, scheme *
 		},
 	}
 
+	if IsTLSEnabled(cr) && cr.Spec.TLS.SecretName != "" {
+		ingress.Spec.TLS = []v1beta1.IngressTLS{
+			{
+				Hosts:      []string{host},
+				SecretName: cr.Spec.TLS.SecretName,
+			},
+		}
+	}
+
 	// Set DevfileRegistry instance as the owner and controller
 	ctrl.SetControllerReference(cr, ingress, scheme)
 	return ingress
