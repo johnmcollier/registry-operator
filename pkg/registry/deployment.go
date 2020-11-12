@@ -23,20 +23,19 @@ import (
 	registryv1alpha1 "github.com/devfile/registry-operator/api/v1alpha1"
 )
 
-func GenerateDeployment(cr *registryv1alpha1.DevfileRegistry, scheme *runtime.Scheme) *appsv1.Deployment {
-	ls := LabelsForDevfileRegistry(cr.Name)
+func GenerateDeployment(cr *registryv1alpha1.DevfileRegistry, scheme *runtime.Scheme, labels map[string]string) *appsv1.Deployment {
 	replicas := int32(1)
 
 	dep := &appsv1.Deployment{
-		ObjectMeta: generateObjectMeta(cr.Name, cr.Namespace, ls),
+		ObjectMeta: generateObjectMeta(cr.Name, cr.Namespace, labels),
 		Spec: appsv1.DeploymentSpec{
 			Replicas: &replicas,
 			Selector: &metav1.LabelSelector{
-				MatchLabels: ls,
+				MatchLabels: labels,
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: ls,
+					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{

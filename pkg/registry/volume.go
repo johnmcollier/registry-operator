@@ -21,11 +21,9 @@ import (
 )
 
 // GenerateDevfileRegistryPVC returns a PVC for providing storage on the OCI registry container
-func GeneratePVC(cr *registryv1alpha1.DevfileRegistry, scheme *runtime.Scheme) *corev1.PersistentVolumeClaim {
-	ls := LabelsForDevfileRegistry(cr.Name)
-
+func GeneratePVC(cr *registryv1alpha1.DevfileRegistry, scheme *runtime.Scheme, labels map[string]string) *corev1.PersistentVolumeClaim {
 	pvc := &corev1.PersistentVolumeClaim{
-		ObjectMeta: generateObjectMeta(cr.Name, cr.Namespace, ls),
+		ObjectMeta: generateObjectMeta(cr.Name, cr.Namespace, labels),
 		Spec: corev1.PersistentVolumeClaimSpec{
 			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
 			Resources: corev1.ResourceRequirements{

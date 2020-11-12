@@ -20,11 +20,9 @@ import (
 )
 
 // GenerateDevfileRegistryService returns a devfileregistry Service object
-func GenerateService(cr *registryv1alpha1.DevfileRegistry, scheme *runtime.Scheme) *corev1.Service {
-	ls := LabelsForDevfileRegistry(cr.Name)
-
+func GenerateService(cr *registryv1alpha1.DevfileRegistry, scheme *runtime.Scheme, labels map[string]string) *corev1.Service {
 	svc := &corev1.Service{
-		ObjectMeta: generateObjectMeta(ServiceName(cr.Name), cr.Namespace, ls),
+		ObjectMeta: generateObjectMeta(ServiceName(cr.Name), cr.Namespace, labels),
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
 				{
@@ -36,7 +34,7 @@ func GenerateService(cr *registryv1alpha1.DevfileRegistry, scheme *runtime.Schem
 					Port: OCIRegistryPort,
 				},
 			},
-			Selector: ls,
+			Selector: labels,
 		},
 	}
 

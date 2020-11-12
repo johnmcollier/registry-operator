@@ -28,13 +28,13 @@ import (
 )
 
 // ensureService ensures that a service for the devfile registry exists on the cluster and is up to date with the custom resource
-func (r *DevfileRegistryReconciler) ensureService(ctx context.Context, cr *registryv1alpha1.DevfileRegistry) (*reconcile.Result, error) {
+func (r *DevfileRegistryReconciler) ensureService(ctx context.Context, cr *registryv1alpha1.DevfileRegistry, labels map[string]string) (*reconcile.Result, error) {
 	// Check if the service already exists, if not create a new one
 	svc := &corev1.Service{}
 	err := r.Get(ctx, types.NamespacedName{Name: registry.ServiceName(cr.Name), Namespace: cr.Namespace}, svc)
 	if err != nil && errors.IsNotFound(err) {
 		// Define a new service
-		pvc := registry.GenerateService(cr, r.Scheme)
+		pvc := registry.GenerateService(cr, r.Scheme, labels)
 		log.Info("Creating a new Service", "Service.Namespace", pvc.Namespace, "Service.Name", pvc.Name)
 		err = r.Create(ctx, pvc)
 		if err != nil {
@@ -51,12 +51,12 @@ func (r *DevfileRegistryReconciler) ensureService(ctx context.Context, cr *regis
 }
 
 // ensureDeployment ensures that a devfile registry deployment exists on the cluster and is up to date with the custom resource
-func (r *DevfileRegistryReconciler) ensureDeployment(ctx context.Context, cr *registryv1alpha1.DevfileRegistry) (*reconcile.Result, error) {
+func (r *DevfileRegistryReconciler) ensureDeployment(ctx context.Context, cr *registryv1alpha1.DevfileRegistry, labels map[string]string) (*reconcile.Result, error) {
 	dep := &appsv1.Deployment{}
 	err := r.Get(ctx, types.NamespacedName{Name: registry.DeploymentName(cr.Name), Namespace: cr.Namespace}, dep)
 	if err != nil && errors.IsNotFound(err) {
 		// Generate a new Deployment template and create it on the cluster
-		dep = registry.GenerateDeployment(cr, r.Scheme)
+		dep = registry.GenerateDeployment(cr, r.Scheme, labels)
 
 		log.Info("Creating a new Deployment", "Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
 		err = r.Create(ctx, dep)
@@ -73,13 +73,13 @@ func (r *DevfileRegistryReconciler) ensureDeployment(ctx context.Context, cr *re
 	return nil, nil
 }
 
-func (r *DevfileRegistryReconciler) ensurePVC(ctx context.Context, cr *registryv1alpha1.DevfileRegistry) (*reconcile.Result, error) {
+func (r *DevfileRegistryReconciler) ensurePVC(ctx context.Context, cr *registryv1alpha1.DevfileRegistry, labels map[string]string) (*reconcile.Result, error) {
 	// Check if the persistentvolumeclaim already exists, if not create a new one
 	pvc := &corev1.PersistentVolumeClaim{}
 	err := r.Get(ctx, types.NamespacedName{Name: registry.PVCName(cr.Name), Namespace: cr.Namespace}, pvc)
 	if err != nil && errors.IsNotFound(err) {
 		// Define a new PVC
-		pvc := registry.GeneratePVC(cr, r.Scheme)
+		pvc := registry.GeneratePVC(cr, r.Scheme, labels)
 		log.Info("Creating a new PersistentVolumeClaim", "PersistentVolumeClaim.Namespace", pvc.Namespace, "PersistentVolumeClaim.Name", pvc.Name)
 		err = r.Create(ctx, pvc)
 		if err != nil {
@@ -94,12 +94,12 @@ func (r *DevfileRegistryReconciler) ensurePVC(ctx context.Context, cr *registryv
 	return nil, nil
 }
 
-func (r *DevfileRegistryReconciler) ensureDevfilesRoute(ctx context.Context, cr *registryv1alpha1.DevfileRegistry, hostname string) (*reconcile.Result, error) {
+func (r *DevfileRegistryReconciler) ensureDevfilesRoute(ctx context.Context, cr *registryv1alpha1.DevfileRegistry, hostname string, labels map[string]string) (*reconcile.Result, error) {
 	route := &routev1.Route{}
 	err := r.Get(ctx, types.NamespacedName{Name: registry.DevfilesRouteName(cr.Name), Namespace: cr.Namespace}, route)
 	if err != nil && errors.IsNotFound(err) {
 		// Define a new route exposing the devfile registry index
-		route := registry.GenerateDevfilesRoute(cr, hostname, r.Scheme)
+		route := registry.GenerateDevfilesRoute(cr, hostname, r.Scheme, labels)
 		log.Info("Creating a new Route", "Route.Namespace", route.Namespace, "Route.Name", route.Name)
 		err = r.Create(ctx, route)
 		if err != nil {
@@ -114,12 +114,12 @@ func (r *DevfileRegistryReconciler) ensureDevfilesRoute(ctx context.Context, cr 
 	return nil, nil
 }
 
-func (r *DevfileRegistryReconciler) ensureOCIRoute(ctx context.Context, cr *registryv1alpha1.DevfileRegistry, hostname string) (*reconcile.Result, error) {
+func (r *DevfileRegistryReconciler) ensureOCIRoute(ctx context.Context, cr *registryv1alpha1.DevfileRegistry, hostname string, labels map[string]string) (*reconcile.Result, error) {
 	route := &routev1.Route{}
 	err := r.Get(ctx, types.NamespacedName{Name: registry.OCIRouteName(cr.Name), Namespace: cr.Namespace}, route)
 	if err != nil && errors.IsNotFound(err) {
 		// Define a new route exposing the devfile registry index
-		route = registry.GenerateOCIRoute(cr, hostname, r.Scheme)
+		route = registry.GenerateOCIRoute(cr, hostname, r.Scheme, labels)
 		log.Info("Creating a new Route", "Route.Namespace", route.Namespace, "Route.Name", route.Name)
 		err = r.Create(ctx, route)
 		if err != nil {
@@ -134,12 +134,12 @@ func (r *DevfileRegistryReconciler) ensureOCIRoute(ctx context.Context, cr *regi
 	return nil, nil
 }
 
-func (r *DevfileRegistryReconciler) ensureIngress(ctx context.Context, cr *registryv1alpha1.DevfileRegistry, hostname string) (*reconcile.Result, error) {
+func (r *DevfileRegistryReconciler) ensureIngress(ctx context.Context, cr *registryv1alpha1.DevfileRegistry, hostname string, labels map[string]string) (*reconcile.Result, error) {
 	ingress := &v1beta1.Ingress{}
 	err := r.Get(ctx, types.NamespacedName{Name: registry.IngressName(cr.Name), Namespace: cr.Namespace}, ingress)
 	if err != nil && errors.IsNotFound(err) {
 		// Define a new ingress exposing the devfile index and oci registry
-		ingress = registry.GenerateIngress(cr, hostname, r.Scheme)
+		ingress = registry.GenerateIngress(cr, hostname, r.Scheme, labels)
 		log.Info("Creating a new Ingress", "Ingress.Namespace", ingress.Namespace, "Ingress.Name", ingress.Name)
 		err = r.Create(ctx, ingress)
 		if err != nil {

@@ -48,7 +48,7 @@ func getDevfileRegistryVolumeSize(cr *registryv1alpha1.DevfileRegistry) string {
 }
 
 func getDevfileRegistryVolumeSource(cr *registryv1alpha1.DevfileRegistry) corev1.VolumeSource {
-	if IsDevfileRegistryStorageEnabled(cr) {
+	if IsStorageEnabled(cr) {
 		return corev1.VolumeSource{
 			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 				ClaimName: PVCName(cr.Name),
@@ -59,9 +59,9 @@ func getDevfileRegistryVolumeSource(cr *registryv1alpha1.DevfileRegistry) corev1
 	return corev1.VolumeSource{}
 }
 
-// IsDevfileRegistryStorageEnabled returns true if storage.Enabled is set in the DevfileRegistry CR
+// IsStorageEnabled returns true if storage.Enabled is set in the DevfileRegistry CR
 // If it's not set, it returns true by default.
-func IsDevfileRegistryStorageEnabled(cr *registryv1alpha1.DevfileRegistry) bool {
+func IsStorageEnabled(cr *registryv1alpha1.DevfileRegistry) bool {
 	if cr.Spec.Storage.Enabled != nil {
 		return *cr.Spec.Storage.Enabled
 	}

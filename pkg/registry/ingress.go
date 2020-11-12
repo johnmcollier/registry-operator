@@ -19,11 +19,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-func GenerateIngress(cr *registryv1alpha1.DevfileRegistry, host string, scheme *runtime.Scheme) *v1beta1.Ingress {
-	ls := LabelsForDevfileRegistry(cr.Name)
-
+func GenerateIngress(cr *registryv1alpha1.DevfileRegistry, host string, scheme *runtime.Scheme, labels map[string]string) *v1beta1.Ingress {
 	ingress := &v1beta1.Ingress{
-		ObjectMeta: generateObjectMeta(IngressName(cr.Name), cr.Namespace, ls),
+		ObjectMeta: generateObjectMeta(IngressName(cr.Name), cr.Namespace, labels),
 		Spec: v1beta1.IngressSpec{
 			Rules: []v1beta1.IngressRule{
 				{
