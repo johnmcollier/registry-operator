@@ -46,7 +46,7 @@ func GenerateDevfilesRoute(cr *registryv1alpha1.DevfileRegistry, host string, sc
 	}
 
 	if host != "" {
-		route.Spec.Host = host
+		route.Spec.Host = GetDevfileRegistryIngress(cr)
 	}
 	// Set DevfileRegistry instance as the owner and controller
 	ctrl.SetControllerReference(cr, route, scheme)
@@ -79,7 +79,7 @@ func GenerateOCIRoute(cr *registryv1alpha1.DevfileRegistry, host string, scheme 
 	}
 
 	if host != "" {
-		route.Spec.Host = host
+		route.Spec.Host = GetDevfileRegistryIngress(cr)
 	}
 
 	// Set DevfileRegistry instance as the owner and controller
